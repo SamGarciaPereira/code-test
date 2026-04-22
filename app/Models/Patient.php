@@ -16,11 +16,12 @@ class Patient extends Model {
      * @var array
      */
     protected $fillable = [
-        'user_id',
-        'name',
-		'gender',
-		'birthdate'
-	];
+			'user_id',
+			'name',
+			'gender',
+			'birthdate',
+			'photo', // nova coluna de foto
+		];
 
 	protected $dates = [
 		'birthdate'

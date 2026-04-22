@@ -48,7 +48,25 @@ class SiteController extends Controller {
 		// consulta a nova policy para verificar se o usuário tem permissão de editar esse paciente
 		$this->authorize('update', $patient);
 
-		$data = array_merge($request->except('birthdate'), [ 'birthdate' => Carbon::createFromFormat('d/m/Y', $request->birthdate) ]);
+
+		// validação dos campos + obrigatoriedade
+		$request->validate([
+			'name'      => 'required|string|max:255',
+			'breed'     => 'required|string|max:255',
+			'gender'    => 'required|in:M,F',
+			'birthdate' => 'required|date_format:d/m/Y',
+			'photo'     => 'nullable|image|mimes:jpeg,jpg,png|max:2048' //upload de imagem aceitando apenas arquivos jpeg, jpg e png, com tamanho 		máximo de 2MB
+		]);
+
+		$data = array_merge($request->except('birthdate', 'photo'), [ 
+			'birthdate' => Carbon::createFromFormat('d/m/Y', $request->birthdate)->format('Y-m-d') 
+		]);
+
+    // upload de arquivo armazenado publicamente
+		if ($request->hasFile('photo')) {
+			$data['photo'] = $request->file('photo')->store('patients', 'public');
+		}
+		
 
 		$patient->update( $data );
 

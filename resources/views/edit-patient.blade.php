@@ -6,9 +6,9 @@
 			<h1>Cadastro de paciente canino</h1>
 
 			<div class="row mt-6 justify-content-center">
-				<div class="col-md-5 text-left">
-					<form action="{{ route('client.edit-patient', $patient->id) }}" method="POST">
-						@csrf
+				<div class="col-md-5 text-left">                                    
+					<form action="{{ route('client.edit-patient', $patient->id) }}" method="POST" enctype="multipart/form-data"> 
+						@csrf																											<!-- enctype="multipart/form-data" para upload de arquivos -->
 						<div class="form-group">
 							<label for="name">Nome</label>
 							<input type="text" name="name" class="form-control @error('name') is-invalid @enderror" id="name" value="{{ old('name', $patient->name) }}">
@@ -62,14 +62,23 @@
 						</div>
 
 						<div class="form-group">
-							<label for="picture">Foto</label>
-							<input type="file" name="picture" class="form-control @error('picture') is-invalid @enderror" id="picture" value="{{ old('picture') }}">
-							@error('picture')
-								<span class="invalid-feedback" role="alert">
-									<strong>{{ $message }}</strong>
-								</span>
+							<label for="photo">Foto do Cachorro</label>
+							
+							@if(isset($patient) && $patient->photo)
+									<div class="mb-2">  <!-- se paciente possuir foto, busca o path inserido na pasta storage/public -->
+											<img src="{{ asset('storage/' . $patient->photo) }}" alt="Foto de {{ $patient->name }}" class="img-thumbnail" style="max-height: 150px;">
+									</div>
+							@endif
+					
+							<input type="file" name="photo" id="photo" class="form-control-file @error('photo') is-invalid @enderror" accept="image/*">
+							
+							<!-- mensagem de erro caso haja falha na validação do upload da foto -->
+							@error('photo')
+									<span class="invalid-feedback d-block" role="alert">
+											<strong>{{ $message }}</strong>
+									</span>
 							@enderror
-						</div>
+					</div>
 
 						<button type="submit" class="btn btn-primary btn-block mt-4">Salvar</button>
 					</form>

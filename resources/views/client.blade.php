@@ -82,7 +82,9 @@
 							<tbody>
 								@foreach (auth()->User()->Patient()->where('name', '!=', null)->get() as $patient)
 									<tr>
-										<td><img src="" class="radius" width="40"></td>
+										<td> <!-- mostra a foto do cachorro, ou uma foto padrão caso ele não tenha -->
+											<img src="{{ $patient->photo ? asset('storage/' . $patient->photo) : asset('images/dog.jpg') }}" class="radius" width="40" alt="Foto de {{ $patient->name }}">
+										</td>
 										<td>{{ $patient->name }}</td>
 										<td>{{ $patient->getAge() }}</td>
 										<td>{{ $patient->birthdate->format('d/m/Y') }}</td>
