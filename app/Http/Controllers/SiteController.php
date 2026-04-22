@@ -31,15 +31,23 @@ class SiteController extends Controller {
 			return redirect()->route('client.edit-patient', $patient->id);
 		}
 		else {
-			$patient = Patient::where([ 'id' => $patient_id ])->first();
+			// busca o paciente 
+			$patient = Patient::findOrFail($patient_id);
+			
+			// verifica a policy antes de mostrar o form
+			$this->authorize('update', $patient);
 		}
 
 		return view('edit-patient', [ 'patient' => $patient ]);
 	}
 
 	public function postEditPatient($patient_id, Request $request) {
-		// garante que o cachorro pertence ao usuário logado
-		$patient = Patient::where('id', $patient_id)->where('user_id', auth()->id())->firstOrFail();
+		// busca o paciente, ou falha se ele não existir
+		$patient = Patient::findOrFail($patient_id);
+ 
+		// consulta a nova policy para verificar se o usuário tem permissão de editar esse paciente
+		$this->authorize('update', $patient);
+
 		$data = array_merge($request->except('birthdate'), [ 'birthdate' => Carbon::createFromFormat('d/m/Y', $request->birthdate) ]);
 
 		$patient->update( $data );
@@ -48,8 +56,13 @@ class SiteController extends Controller {
 	}
 
 	public function getRemovePatient($patient_id) {
-		// impede que cachorros de outras pessoas sejam removidos
-		$patient = Patient::where('id', $patient_id)->where('user_id', auth()->id())->firstOrFail();
+		
+		// busca o paciente, ou falha se ele não existir
+		$patient = Patient::findOrFail($patient_id);
+
+		// consulta a nova policy para verificar se o usuário tem permissão de editar esse paciente
+		$this->authorize('delete', $patient);
+
 		$patient->delete();
 
 		return redirect()->route('client')->with('toast', 'Paciente removido com sucesso.');
