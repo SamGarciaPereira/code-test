@@ -38,7 +38,8 @@ class SiteController extends Controller {
 	}
 
 	public function postEditPatient($patient_id, Request $request) {
-		$patient = Patient::find($patient_id);
+		// garante que o cachorro pertence ao usuário logado
+		$patient = Patient::where('id', $patient_id)->where('user_id', auth()->id())->firstOrFail();
 		$data = array_merge($request->except('birthdate'), [ 'birthdate' => Carbon::createFromFormat('d/m/Y', $request->birthdate) ]);
 
 		$patient->update( $data );
@@ -47,7 +48,8 @@ class SiteController extends Controller {
 	}
 
 	public function getRemovePatient($patient_id) {
-		$patient = Patient::find($patient_id);
+		// impede que cachorros de outras pessoas sejam removidos
+		$patient = Patient::where('id', $patient_id)->where('user_id', auth()->id())->firstOrFail();
 		$patient->delete();
 
 		return redirect()->route('client')->with('toast', 'Paciente removido com sucesso.');
