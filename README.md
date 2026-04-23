@@ -1,109 +1,71 @@
-# 👋💻😅 Bem-vindo(a) ao code test da Energié
+# Entregas do Teste Técnico: Gestão Veterinária
 
-Estamos entusiasmados em recebê-lo(a) nesta próxima etapa - você mereceu. Agora é hora de começar a escrever um pouco de código.
+Este documento detalha o histórico de desenvolvimento e as implementações realizadas para cumprir os requisitos do teste divididas por blocos de commits.
 
-## 🐕 Rusky Vet
+## Histórico de Commits
 
-A Rusky Vet LTDA é a empresa número 1 em saúde canina no mundo, oferecendo soluções em saúde e bem-estar para todas as raças de cachorro.
+### Commit 1: Correções de Segurança e Acesso
+**Mensagem:** `fix: corrige vulnerabilidade na URL definitiva, criando uma policy e aplicando middleware nas rotas`
 
-Atualmente, a especialidade da empresa é garantir a saúde desses animais através de consultas veterinárias, através de um processo manual utilizando telefone e consulta presenciais.
-Nossa meta é desenvolvermos uma solução tecnológica que permita que parte desse processo seja feito online.
+* **O que foi feito:**
+  * Correção da vulnerabilidade que permitia que usuários não logados (visitantes) acessassem as telas do sistema. Agora, todas as rotas sensíveis exigem autenticação.
+  * Correção da vulnerabilidade IDOR (Insecure Direct Object Reference) no cadastro de pacientes.
+  * Implementação de uma `PatientPolicy` garantindo que:
+    * Um Cliente só pode visualizar, editar ou remover o seu próprio cachorro.
+    * O sistema barra automaticamente tentativas de alterar o ID na URL para acessar dados de terceiros.
+    * O Veterinário possui permissão global para acessar e editar informações de qualquer paciente para fins médicos.
 
-### 🤹 Suas tarefas
+---
 
-* O cadastro de cachorros está incompleto. Implementar a funcionalidade de adicionar uma foto ao cadastro.
-* A tela de agendar consultas existe, mas ao clicar em "Agendar" nada acontece. Implementar a funcionalidade de agendar consultas, e mostrar as consultas do usuário cliente.
-* Mostrar todas as consultas agendadas para o usuário veterinário. Ao abrir uma consulta, o veterinário deve ser capaz de adicionar observações e salvar, marcando a consulta como finalizada automaticamente.
-* Como o projeto ainda está incompleto, podem haver bugs e/ou problemas de segurança. Caso encontre algum, conserte estes problemas
+### Commit 2: Melhorias no Cadastro e Upload de Foto
+**Mensagem:** `feat: adiciona funcionalidade de upload de foto para pacientes e validação no formulário`
 
-### 👉 Recomendações técnicas
+* **O que foi feito:**
+  * **Nova Funcionalidade:** Implementação do campo de upload de imagem na tela de edição do paciente, aceitando apenas arquivos de imagem.
+  * Armazenamento das fotos configurado utilizando a estrutura nativa do Laravel (pasta `storage/public`, para isso rodar `php artisan storage:link`).
+  * Adição de validação estrita no Controller para garantir que nenhum paciente seja salvo com campos obrigatórios em branco, cumprindo o requisito de que "todos os campos são obrigatórios".
 
-Para manter as coisas simples, aqui vão algumas recomendações técnicas:
+---
 
-* Não é necessário adicionar nenhum tipo de dependência extra (composer ou npm).
-* Ao cadastrar um cachorro, todos os campos são obrigatórios.
-* Idealmente, a tela de agendamento de consultas deve mostrar os horários disponíveis via AJAX ao selecionar uma data. Para manter o funcionamento simples, a empresa realiza somente uma consulta por hora em período comercial, exceto finais de semana. Uma vez agendada a consulta, o cliente não pode excluir nem alterar a mesma.
-* Todos os veterinários possuem acesso à todas as consultas. 
-* Sempre que algum veterinário realizar uma consulta deve ser registrado: Quem realizou a consulta, quais observações foram feitas e quem finalizou esta consulta.
-* Não é necessário criar cadastro para veterinários. Contas de cliente são convertidas manualmente em contas de veterinário através do banco de dados.
+### Commit 3: Módulo Completo de Agendamentos (Cliente e Veterinário) 
+**Mensagem:** `feat: implementa módulo completo de agendamentos (fluxo do cliente com AJAX e painel de atendimento do veterinário)`
 
-### ✅ Entrega
+* **O que foi feito:**
+  * **Estrutura:** Criação da tabela `appointments` no banco de dados para vincular Pacientes (Cachorros) a Veterinários através de data, hora e observações.
+  * **Área do Cliente (AJAX):**
+    * Conserto do botão "Agendar".
+    * Criação de uma API interna para consultar horários livres. Ao selecionar a data no formulário, o sistema via AJAX lista dinamicamente apenas os horários comerciais disponíveis.
+    * Adição de validação no back-end para prevenir colisões (caso dois clientes cliquem em "Agendar" no mesmo segundo para o mesmo horário).
+    * Listagem visual de todas as consultas futuras do cliente na sua tela inicial.
+  * **Área do Veterinário:**
+    * Construção do painel que lista, de forma cronológica, todas as consultas ativas no sistema.
+    * Implementação da tela de atendimento, onde o veterinário insere suas "Observações".
 
-A entrega final deve ser um **repositório do github**, contendo no **README** quaisquer informações que achar relevante passar para a empresa e para quem vai revisar seu código. O repositório precisa ser público.
+---
 
-### ⏳ Tempo
+### Commit 4: Refinamento de Regras de Negócio e Validações Temporais
+**Mensagem:** `feat: adiciona validações para data de nascimento no futuro e agendamentos no passado`
 
-Pedimos para que você trabalhe em torno de 5 horas nesse teste (sem contar qualquer necessidade de pesquisa ou setup), e que complete em até 3 dias, a partir da data que receber este teste. Não gaste todos os dias neste teste. Nós não queremos tomar todo o seu tempo.
+* **O que foi feito:**
+    * **Consistência no Cadastro de Pacientes:** Implementação de trava de segurança para impedir o registro de datas de nascimento no futuro, garantindo a coerência dos dados.
+    * **Prevenção de Agendamentos Retrógrados:** Atualização da lógica de agendamento para rejeitar tentativas de marcação de consultas em datas ou horários que já passaram.
 
-Se você achar que o teste está tomando mais tempo do que o sugerido, aqui vão algumas dicas:
+---
 
-### Dicas importantes
+### Commit 5: Gestão Administrativa para Veterinários
+**Mensagem:** `feat: adiciona funcionalidades para veterinários gerenciarem pacientes e agendamentos`
 
-* A melhor solução, muitas vezes é a que você já conhece. Foque em resolver os problemas primeiro.
-* Não gaste tempo tentando entender todo o código fonte. Recomendamos que teste o sistema, faça um "scan" rápido e em seguida parta para as alterações.
-* Planeje alocar um tempo para cada passo do desafio antes de iniciar, e adote uma ideia de "timeboxing". Para explicar, timeboxing é a ideia de você cronometrar suas tarefas, e se uma tarefa estiver tomando mais tempo do que o esperado inicialmente, você começa a focar em outra coisa e evita ficar estagnado em um único trecho do código.
-* Priorize suas tarefas, faça o mais importante primeiro e deixe os pontos "legais de se ter" pra caso sobre tempo.
-* Commits descritivos e significativos são importantes, mas também queremos ver como você chega lá.
-* Lembre-se que esse é um projeto fictício. Ao mesmo tempo que é importante levar em conta situações e problemas reais no seu código, não é necessário gastar tempo com soluções muito complexas.
+* **O que foi feito:**
+    * **Gestão de Fluxo:** O Veterinário agora pode realizar agendamentos em nome de qualquer cliente e cadastrar novos pacientes vinculando-os a proprietários específicos.
+    * **Painel de Controle:** Refatoração da interface do veterinário para atuar como um centro de comando administrativo, centralizando ações de cadastro e marcação de consultas.
 
-## 🙋 FAQ
+---
 
-*1. Eu tenho dúvidas sobre a solução, devo fazer deste jeito ou deste outro jeito?*
+### Commit 6: Auditoria e Responsabilidade Técnica
+**Mensagem:** `feat: adiciona exibição do veterinário responsável nas consultas dos pacientes e no painel do veterinário`
 
-Parte da avaliação é ver como você lida com uma especificação como esta. Implemente uma solução que atenda ao problema e documente suas decisões no README do seu projeto.
-
-*2. Não estou familiarizado com todas as tecnologias. O que fazer?*
-
-Assumimos que você esteja familiarizado com um projeto Laravel e com JavaScript. Se você não conseguir encontrar a resposta para alguma dúvida técnica no Google, sinta-se à vontade para nos perguntar 😉.
-
-*3. Precisarei de mais tempo, o que fazer?*
-
-Entendemos que imprevistos podem acontecer, e se você precisar de mais um prazo, fale com a gente.
-
-## 💻 Como executar o projeto
-
-Faça o clone do projeto, renomeie o arquivo .env.example para .env, e altere este arquivo com as credenciais do seu banco de dados MySQL local.
-
-Em seguida, execute os seguintes comandos na pasta raíz do projeto:
-
-1. Para instalar as dependências do projeto: 
-
-```
-    composer install
-```
-
-```
-    npm install
-```
-
-
-2. Carregar o arquivo .env no cache:
-
-```
-    php artisan config:cache
-```
-
-3. Para criar o banco de dados e registros de teste:
-
-```
-    php artisan migrate
-```
-```
-    php artisan db:seed
-```
-
-4. Para executar o projeto:
-
-```
-    php artisan serve
-```
-
-5. Em outra aba do terminal, utilize o comando:
-
-```
-    npm run watch
-```
-
-O comando watch vai assistir a pasta do seu projeto e recarregar automaticamente o navegador em localhost:3000 quando houver alguma alteração, além de compilar os arquivos JavaScript e SCSS para dentro de public.
-
-Após rodar o comando db:seed, você será capaz de fazer o login com o usuário cliente joaodasilva@gmail.com, e com o usuário veterinário mariovet@gmail.com, ambos com senha 123123123.
+* **O que foi feito:**
+    * **Rastreabilidade:** Implementação de registro de auditoria para identificar exatamente qual profissional finalizou cada atendimento médico.
+    * **Transparência na Interface:**
+        * **Visão do Cliente:** As consultas finalizadas agora exibem o nome do veterinário responsável.
+        * **Visão do Veterinário:** O painel de histórico passou a listar o médico responsável por cada procedimento realizado na clínica.
