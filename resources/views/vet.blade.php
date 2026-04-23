@@ -11,6 +11,7 @@
             <img src="{{ asset('images/dog.jpg') }}" class="round" width="100">
           </p>
           <p class="lead mt-4">Cadastrar cachorro</p>
+          <!-- vet responsável pela consulta -->
           <p>
             <a class="btn btn-primary" href="{{ route('client.edit-patient') }}" role="button">Cadastrar</a>
           </p>
@@ -23,6 +24,7 @@
           <p>
             <a class="btn btn-primary" href="{{ route('client.create-appointment') }}" role="button">Agendar</a>
           </p>
+          <!-- mostra quem fechou a consulta, quando houver -->
         </div>
       </div>
     </div>
@@ -43,6 +45,7 @@
                   <th>Nome do cachorro</th>
                   <th>Data da consulta</th>
                   <th>Horário</th>
+                  <th>Veterinário</th>
                   <th></th>
                 </tr>
               </thead>
@@ -54,6 +57,7 @@
                     <td>{{ optional($appointment->patient)->name ?? '-' }}</td>
                     <td>{{ \Carbon\Carbon::parse($appointment->date)->format('d/m/Y') }}</td>
                     <td>{{ \Carbon\Carbon::parse($appointment->time)->format('H:i') }}</td>
+                    <td>{{ optional($appointment->vet)->name ?? '-' }}</td>
                     <td>
                       <a href="{{ route('vet.edit-appointment', $appointment->id) }}">Abrir</a>
                     </td>

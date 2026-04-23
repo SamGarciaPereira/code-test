@@ -25,8 +25,9 @@ class SiteController extends Controller {
 		$user = auth()->user();
 		// filtra apenas os cachorros do usuário logado
 		$patientIds = Patient::where('user_id', $user->id)->pluck('id');
-		// lista apenas consultas dos cachorros desse cliente
-		$appointments = \App\Models\Appointment::whereIn('patient_id', $patientIds)
+		// lista apenas consultas dos cachorros desse cliente com o vet responsável
+		$appointments = \App\Models\Appointment::with(['patient.user', 'vet'])
+			->whereIn('patient_id', $patientIds)
 												->orderBy('date')->orderBy('time')->get();
 
 		return view('client', ['appointments' => $appointments]);
@@ -211,7 +212,7 @@ class SiteController extends Controller {
 	// ------------------ Veterinário ------------------
 	public function getVet(Request $request) {
 		// carrega as consultas do sistema para o topo do painel
-		$appointments = \App\Models\Appointment::with(['patient.user'])
+		$appointments = \App\Models\Appointment::with(['patient.user', 'vet'])
 			->orderBy('date', 'asc')
 			->orderBy('time', 'asc')
 			->get();

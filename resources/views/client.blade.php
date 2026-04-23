@@ -42,16 +42,20 @@
                   <th>Nome do cachorro</th>
                   <th>Data da consulta</th>
                   <th>Horário</th>
+                  <th>Veterinário</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 @foreach ($appointments as $appointment)
+                  <!-- mostra quem finalizou o atendimento -->
                   <tr>
                     <td>{{ $appointment->is_finished ? 'FINALIZADA' : 'AGENDADA' }}</td>
                     <td>{{ optional($appointment->patient)->name }}</td>
                     <td>{{ \Carbon\Carbon::parse($appointment->date)->format('d/m/Y') }}</td>
                     <td>{{ \Carbon\Carbon::parse($appointment->time)->format('H:i') }}</td>
+                    <!-- nome do vet responsável pela consulta -->
+                    <td>{{ optional($appointment->vet)->name ?? '-' }}</td>
                     <td>
                       <a href="{{ route('client.view-appointment', $appointment->id) }}">Abrir</a>
                     </td>
