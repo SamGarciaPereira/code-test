@@ -64,8 +64,14 @@ class SiteController extends Controller {
 			'photo'     => 'nullable|image|mimes:jpeg,jpg,png|max:2048' //upload de imagem aceitando apenas arquivos jpeg, jpg e png, com tamanho 		máximo de 2MB
 		]);
 
+		// impede data de nascimento no futuro
+		$birthdate = Carbon::createFromFormat('d/m/Y', $request->birthdate)->startOfDay();
+		if ($birthdate->gt(Carbon::today())) {
+			return back()->withErrors(['birthdate' => 'a data de nascimento não pode ser no futuro.'])->withInput();
+		}
+
 		$data = array_merge($request->except('birthdate', 'photo'), [ 
-			'birthdate' => Carbon::createFromFormat('d/m/Y', $request->birthdate)->format('Y-m-d') 
+			'birthdate' => $birthdate->format('Y-m-d') 
 		]);
 
     // upload de arquivo armazenado publicamente
@@ -118,7 +124,13 @@ class SiteController extends Controller {
 		// garante que o cliente só agenda para o próprio cachorro
 		$this->authorize('update', $patient); 
 
-		$date = Carbon::createFromFormat('d/m/Y', $request->date)->format('Y-m-d');
+		// impede agendamento em datas passadas
+		$appointmentDate = Carbon::createFromFormat('d/m/Y', $request->date)->startOfDay();
+		if ($appointmentDate->lt(Carbon::today())) {
+			return back()->withErrors(['date' => 'a consulta não pode ser agendada no passado.'])->withInput();
+		}
+
+		$date = $appointmentDate->format('Y-m-d');
 
 		// impede dupla reserva no mesmo dia e horário
 		$isBooked = \App\Models\Appointment::where('date', $date)->where('time', $request->time)->exists();
@@ -173,7 +185,14 @@ class SiteController extends Controller {
 	public function getAvailableTimes(Request $request) {
 		// sem data selecionada, não há horários para retornar
 		if (!$request->date) return response()->json([]);
-		$date = Carbon::createFromFormat('d/m/Y', $request->date)->format('Y-m-d');
+		$dateObject = Carbon::createFromFormat('d/m/Y', $request->date)->startOfDay();
+
+		// não retorna horários para datas passadas
+		if ($dateObject->lt(Carbon::today())) {
+			return response()->json([]);
+		}
+
+		$date = $dateObject->format('Y-m-d');
 		
     // extrai apenas a hora e minuto das consultas já marcadas
 		$bookedTimes = \App\Models\Appointment::where('date', $date)->pluck('time')
