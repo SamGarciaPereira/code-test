@@ -38,6 +38,7 @@ Route::middleware('auth')->group(function () {
     Route::get('agendar-consulta', [ SiteController::class, 'getCreateAppointment' ])->name('client.create-appointment');
     Route::post('agendar-consulta', [ SiteController::class, 'postCreateAppointment' ])->name('client.create-appointment.post');
     Route::get('consulta/{appointment_id}', [ SiteController::class, 'getAppointment' ])->name('client.view-appointment');
+    Route::get('horarios-disponiveis', [ SiteController::class, 'getAvailableTimes' ])->name('api.available-times');
 
     // veterinário
     Route::middleware('auth:vet')->group(function () {

@@ -16,8 +16,14 @@ class SiteController extends Controller {
 
 	// ------------------ Cliente ------------------
 	public function getClient(Request $request) {
-		return view('client');
-	}
+		$user = auth()->user();
+		$patientIds = Patient::where('user_id', $user->id)->pluck('id');
+		// lista apenas consultas dos cachorros desse cliente
+		$appointments = \App\Models\Appointment::whereIn('patient_id', $patientIds)
+												->orderBy('date')->orderBy('time')->get();
+
+		return view('client', ['appointments' => $appointments]);
+  }
 
 	public function getEditPatient($patient_id = null) {
 		$user = auth()->User();
@@ -87,8 +93,12 @@ class SiteController extends Controller {
 	}
 
 	public function getAppointment($appointment_id) {
-		// - TODO: Retornar consulta
-		$appointment = null;
+		$user = auth()->user();
+		$patientIds = Patient::where('user_id', $user->id)->pluck('id');
+
+		$appointment = \App\Models\Appointment::with(['patient', 'vet'])
+			->whereIn('patient_id', $patientIds)->findOrFail($appointment_id);
+			
 		return view('appointment', [ 'appointment' => $appointment ]);
 	}
 
@@ -97,21 +107,82 @@ class SiteController extends Controller {
 	}
 
 	public function postCreateAppointment(Request $request) {
-		// - TODO: Agendar a consulta
+		// valida os dados enviados pelo form de agendamento
+		$request->validate([
+			'patient' => 'required|exists:patients,id',
+			'date'    => 'required|date_format:d/m/Y',
+			'time'    => 'required|date_format:H:i'
+		]);
+
+		$patient = Patient::findOrFail($request->patient);
+		// garante que o cliente só agenda para o próprio cachorro
+		$this->authorize('update', $patient); 
+
+		$date = Carbon::createFromFormat('d/m/Y', $request->date)->format('Y-m-d');
+
+		// impede dupla reserva no mesmo dia e horário
+		$isBooked = \App\Models\Appointment::where('date', $date)->where('time', $request->time)->exists();
+		if($isBooked) return back()->withErrors(['time' => 'Este horário acabou de ser reservado.'])->withInput();
+
+		\App\Models\Appointment::create([
+			'patient_id' => $patient->id,
+			'date'       => $date,
+			'time'       => $request->time,
+		]);
+
 		return redirect()->route('client')->with('toast', 'Consulta marcada com sucesso.');
+	}
+
+	public function postEditAppointment($appointment_id, Request $request) {
+		$appointment = \App\Models\Appointment::findOrFail($appointment_id);
+		
+		// bloqueia nova edição após finalização
+		if($appointment->is_finished) {
+			return back()->with('toast', 'Esta consulta já foi finalizada e não pode ser alterada.');
+		}
+
+		// observações são obrigatórias para finalizar
+		$request->validate(['observations' => 'required|string']);
+
+		$appointment->update([
+			'observations' => $request->observations,
+			'vet_id'       => auth()->id(), 
+			'is_finished'  => true     
+		]);
+
+		return redirect()->route('vet')->with('toast', 'Consulta finalizada com sucesso.');
 	}
 
 	// ------------------ Veterinário ------------------
 	public function getVet(Request $request) {
-		// - TODO: Retornar todos os agendamentos
-		$appointments = [];
+		// carrega consulta com cachorro e dono para listagem do vet
+		$appointments = \App\Models\Appointment::with(['patient.user'])
+			->orderBy('date', 'asc')
+			->orderBy('time', 'asc')
+			->get();
 		return view('vet', [ 'appointments' => $appointments ]);
 	}
 
 	public function getEditAppointment($appointment_id) {
-		// - TODO: Retornar consulta
-		$appointment = null;
+		// carrega todos os dados exibidos na tela de edição
+		$appointment = \App\Models\Appointment::with(['patient.user', 'vet'])
+			->findOrFail($appointment_id);
 		return view('edit-appointment', [ 'appointment' => $appointment ]);
 	}
 
+	public function getAvailableTimes(Request $request) {
+		// sem data selecionada, não há horários para retornar
+		if (!$request->date) return response()->json([]);
+		$date = Carbon::createFromFormat('d/m/Y', $request->date)->format('Y-m-d');
+		
+    // extrai apenas a hora e minuto das consultas já marcadas
+		$bookedTimes = \App\Models\Appointment::where('date', $date)->pluck('time')
+            ->map(fn($t) => Carbon::parse($t)->format('H:i'))->toArray();
+
+    // 1 consulta por hora, horário comercial
+		$businessHours = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+		$available = array_values(array_diff($businessHours, $bookedTimes));
+		
+		return response()->json($available);
+	}
 }

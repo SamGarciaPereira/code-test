@@ -7,7 +7,7 @@
 
 			<div class="row mt-6 justify-content-center">
 				<div class="col-md-5 text-left">
-					<form action="{{ route('client.create-appointment') }}" method="POST">
+					<form action="{{ route('client.create-appointment.post') }}" method="POST">
 						@csrf
 						<div class="form-group">
 							<label for="patient">Paciente</label>
@@ -82,13 +82,21 @@
 			$('#date').datepicker('setStartDate', new Date());
 
 			$('#date').change(() => {
+				// recarrega horários quando a data for alterada
 				loadAppointmentTimes();
 			});
 
 			function loadAppointmentTimes() {
 				const date = $('#date').val();
-				// - TODO: Carregar os horários disponíveis via ajax de acordo com a data.
-				console.log(date);
+				if(!date) return;
+				
+				// consulta horários livres para a data selecionada
+				$.get('{{ route("api.available-times") }}', { date: date }, function(times) {
+					const select = $('#time');
+					// reconstrói as opções com os horários retornados
+					select.empty().append('<option value="">Selecione</option>');
+					times.forEach(time => select.append(`<option value="${time}">${time}</option>`));
+				});
 			}
 
 			loadAppointmentTimes();
