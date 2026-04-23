@@ -18,6 +18,7 @@ class Patient extends Model {
     protected $fillable = [
 			'user_id',
 			'name',
+			'breed',
 			'gender',
 			'birthdate',
 			'photo', // nova coluna de foto

@@ -13,8 +13,11 @@
 							<label for="patient">Paciente</label>
 							<select name="patient" class="form-control @error('patient') is-invalid @enderror" id="patient">
 								<option value="">Selecione</option>
-								@foreach(auth()->User()->Patient()->where('name', '!=', null)->get() as $patient)
-									<option value="{{ $patient->id }}">{{ $patient->name }}</option>
+								@foreach(($patients ?? collect()) as $patient)
+									<option value="{{ $patient->id }}" @if(old('patient') == $patient->id) selected @endif>
+										{{ $patient->name }}@if(auth()->user()->type === 'VET' && isset($patient->user) && $patient->user) - {{ $patient->user->name }} @endif
+								<!-- vet vê o dono ao escolher o paciente -->
+									</option>
 								@endforeach
 							</select>
 							@error('patient')

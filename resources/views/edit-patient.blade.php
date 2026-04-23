@@ -7,8 +7,27 @@
 
 			<div class="row mt-6 justify-content-center">
 				<div class="col-md-5 text-left">                                    
-					<form action="{{ route('client.edit-patient', $patient->id) }}" method="POST" enctype="multipart/form-data"> 
-						@csrf																											<!-- enctype="multipart/form-data" para upload de arquivos -->
+					<form action="{{ route('client.edit-patient.post', $patient->id) }}" method="POST" enctype="multipart/form-data"> 
+						@csrf													<!-- enctype="multipart/form-data" para upload de arquivos -->
+
+						<!-- vet escolhe o dono do cachorro -->
+						@if(auth()->user()->type === 'VET')
+							<div class="form-group">
+								<label for="user_id">Dono do cachorro</label>
+								<select name="user_id" class="form-control @error('user_id') is-invalid @enderror" id="user_id">
+									<option value="">Selecione</option>
+									@foreach(($owners ?? collect()) as $owner)
+										<option value="{{ $owner->id }}" @if(old('user_id', $patient->user_id ?? '') == $owner->id) selected @endif>{{ $owner->name }}</option>
+									@endforeach
+								</select>
+								@error('user_id')
+									<span class="invalid-feedback" role="alert">
+										<strong>{{ $message }}</strong>
+									</span>
+								@enderror
+							</div>
+						@endif
+
 						<div class="form-group">
 							<label for="name">Nome</label>
 							<input type="text" name="name" class="form-control @error('name') is-invalid @enderror" id="name" value="{{ old('name', $patient->name) }}">

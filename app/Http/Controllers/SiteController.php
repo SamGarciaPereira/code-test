@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 
 use App\Models\Patient;
+use App\Models\User;
 
 use Carbon\Carbon;
 
@@ -16,7 +17,13 @@ class SiteController extends Controller {
 
 	// ------------------ Cliente ------------------
 	public function getClient(Request $request) {
+		// vet vai direto para o painel próprio
+		if (auth()->user()->type === 'VET') {
+			return redirect()->route('vet');
+		}
+
 		$user = auth()->user();
+		// filtra apenas os cachorros do usuário logado
 		$patientIds = Patient::where('user_id', $user->id)->pluck('id');
 		// lista apenas consultas dos cachorros desse cliente
 		$appointments = \App\Models\Appointment::whereIn('patient_id', $patientIds)
@@ -28,6 +35,13 @@ class SiteController extends Controller {
 	public function getEditPatient($patient_id = null) {
 		$user = auth()->User();
 		if (!$patient_id) {
+			// vet cria novo paciente e escolhe o dono no formulário
+			if ($user->type === 'VET') {
+				$patient = new Patient();
+				$owners = User::where('type', 'CLIENT')->orderBy('name')->get();
+				return view('edit-patient', [ 'patient' => $patient, 'owners' => $owners ]);
+			}
+
 			$patient = Patient::where([ 'user_id' => $user->id, 'name' => null ])->first();
 
 			if (!$patient) {
@@ -44,43 +58,58 @@ class SiteController extends Controller {
 			$this->authorize('update', $patient);
 		}
 
-		return view('edit-patient', [ 'patient' => $patient ]);
+		$owners = [];
+		if ($user->type === 'VET') {
+			$owners = User::where('type', 'CLIENT')->orderBy('name')->get();
+		}
+
+		return view('edit-patient', [ 'patient' => $patient, 'owners' => $owners ]);
 	}
 
-	public function postEditPatient($patient_id, Request $request) {
-		// busca o paciente, ou falha se ele não existir
-		$patient = Patient::findOrFail($patient_id);
- 
-		// consulta a nova policy para verificar se o usuário tem permissão de editar esse paciente
-		$this->authorize('update', $patient);
+	public function postEditPatient(Request $request, $patient_id = null) {
+		$user = auth()->user();
+		$patient = $patient_id ? Patient::findOrFail($patient_id) : new Patient();
 
+		// se não houver ID, o veterinário está criando um paciente novo
+		if (!$patient_id) {
+			$patient = new Patient();
+			
+			// valida e atribui o dono escolhido pelo veterinário no select
+			$request->validate(['user_id' => 'required|exists:users,id']);
+			$patient->user_id = $request->user_id;
 
-		// validação dos campos + obrigatoriedade
+		} else {
+			// se houver ID, busca no banco e valida permissão 
+			$patient = Patient::findOrFail($patient_id);
+			$this->authorize('update', $patient);
+			
+			// permite que o veterinário troque o dono de um cachorro já existente
+			if ($user->type === 'VET' && $request->has('user_id')) {
+				$request->validate(['user_id' => 'required|exists:users,id']);
+				$patient->user_id = $request->user_id;
+			}
+		}
+
+		// validação dos dados obrigatórios do cachorro
 		$request->validate([
 			'name'      => 'required|string|max:255',
 			'breed'     => 'required|string|max:255',
 			'gender'    => 'required|in:M,F',
 			'birthdate' => 'required|date_format:d/m/Y',
-			'photo'     => 'nullable|image|mimes:jpeg,jpg,png|max:2048' //upload de imagem aceitando apenas arquivos jpeg, jpg e png, com tamanho 		máximo de 2MB
+			'photo'     => 'nullable|image|max:2048'
 		]);
 
-		// impede data de nascimento no futuro
-		$birthdate = Carbon::createFromFormat('d/m/Y', $request->birthdate)->startOfDay();
-		if ($birthdate->gt(Carbon::today())) {
-			return back()->withErrors(['birthdate' => 'a data de nascimento não pode ser no futuro.'])->withInput();
-		}
-
-		$data = array_merge($request->except('birthdate', 'photo'), [ 
-			'birthdate' => $birthdate->format('Y-m-d') 
+		$data = array_merge($request->except(['birthdate', 'photo', 'user_id']), [ 
+			'birthdate' => Carbon::createFromFormat('d/m/Y', $request->birthdate)->format('Y-m-d') 
 		]);
 
-    // upload de arquivo armazenado publicamente
 		if ($request->hasFile('photo')) {
 			$data['photo'] = $request->file('photo')->store('patients', 'public');
 		}
-		
 
-		$patient->update( $data );
+		// preenche os dados e salva
+		$patient->fill($data);
+		$patient->save();
 
 		return redirect()->route('client')->with('toast', 'Paciente salvo com sucesso.');
 	}
@@ -109,7 +138,16 @@ class SiteController extends Controller {
 	}
 
 	public function getCreateAppointment() {
-		return view('create-appointment');
+		$user = auth()->user();
+
+		// vet agenda para qualquer cachorro já cadastrado
+		if ($user->type === 'VET') {
+			$patients = Patient::with('user')->whereNotNull('name')->orderBy('name')->get();
+		} else {
+			$patients = Patient::where('user_id', $user->id)->whereNotNull('name')->orderBy('name')->get();
+		}
+
+		return view('create-appointment', [ 'patients' => $patients ]);
 	}
 
 	public function postCreateAppointment(Request $request) {
@@ -123,6 +161,11 @@ class SiteController extends Controller {
 		$patient = Patient::findOrFail($request->patient);
 		// garante que o cliente só agenda para o próprio cachorro
 		$this->authorize('update', $patient); 
+
+		// impede agendamento para paciente sem cadastro completo
+		if (!$patient->name) {
+			return back()->withErrors(['patient' => 'cadastre o cachorro antes de agendar uma consulta.'])->withInput();
+		}
 
 		// impede agendamento em datas passadas
 		$appointmentDate = Carbon::createFromFormat('d/m/Y', $request->date)->startOfDay();
@@ -142,7 +185,7 @@ class SiteController extends Controller {
 			'time'       => $request->time,
 		]);
 
-		return redirect()->route('client')->with('toast', 'Consulta marcada com sucesso.');
+		return redirect()->route(auth()->user()->type === 'VET' ? 'vet' : 'client')->with('toast', 'Consulta marcada com sucesso.');
 	}
 
 	public function postEditAppointment($appointment_id, Request $request) {
@@ -167,12 +210,19 @@ class SiteController extends Controller {
 
 	// ------------------ Veterinário ------------------
 	public function getVet(Request $request) {
-		// carrega consulta com cachorro e dono para listagem do vet
+		// carrega as consultas do sistema para o topo do painel
 		$appointments = \App\Models\Appointment::with(['patient.user'])
 			->orderBy('date', 'asc')
 			->orderBy('time', 'asc')
 			->get();
-		return view('vet', [ 'appointments' => $appointments ]);
+
+		// carrega todos os cachorros cadastrados com o dono vinculado
+		$patients = Patient::with('user')
+			->whereNotNull('name')
+			->orderBy('name', 'asc')
+			->get();
+
+		return view('vet', [ 'appointments' => $appointments, 'patients' => $patients ]);
 	}
 
 	public function getEditAppointment($appointment_id) {
